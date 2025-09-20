@@ -152,8 +152,6 @@ const PlaneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 
 
 // --- START OF geminiService.ts ---
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const itinerarySchema = {
   type: Type.OBJECT,
   properties: {
@@ -248,7 +246,7 @@ const itinerarySchema = {
   required: ['tripTitle', 'totalEstimatedCost', 'currency', 'flightDetails', 'weatherForecast', 'dailyPlans'],
 };
 
-const generateItinerary = async (prefs: TripPreferences): Promise<ItineraryPlan> => {
+const generateItinerary = async (ai: GoogleGenAI, prefs: TripPreferences): Promise<ItineraryPlan> => {
   const duration = Math.ceil((new Date(prefs.endDate).getTime() - new Date(prefs.startDate).getTime()) / (1000 * 3600 * 24)) + 1;
 
   const prompt = `Generate a personalized travel itinerary.
@@ -818,18 +816,34 @@ const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset 
 
 // --- START OF App.tsx ---
 const App: React.FC = () => {
+  const [aiClient, setAiClient] = useState<GoogleGenAI | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<TripPreferences | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryPlan | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      setAiClient(ai);
+    } catch (e) {
+      console.error(e);
+      setInitError("Could not connect to the AI service. Please ensure the application is configured correctly.");
+    }
+  }, []);
+
   const handleFormSubmit = useCallback(async (prefs: TripPreferences) => {
+    if (!aiClient) {
+        setError("AI Service is not available.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     setItinerary(null);
     setPreferences(prefs);
     try {
-      const plan = await generateItinerary(prefs);
+      const plan = await generateItinerary(aiClient, prefs);
       setItinerary(plan);
     } catch (err) {
       console.error(err);
@@ -837,7 +851,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [aiClient]);
 
   const handleReset = () => {
     setPreferences(null);
@@ -847,6 +861,14 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (initError) {
+        return (
+            <div className="text-center p-8 bg-red-100 border border-red-400 text-red-700 rounded-lg animate-fade-in">
+                <h2 className="text-xl font-bold mb-4">Service Unavailable</h2>
+                <p>{initError}</p>
+            </div>
+        );
+    }
     if (isLoading) {
       return <LoadingSpinner preferences={preferences} />;
     }
