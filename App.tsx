@@ -1,49 +1,34 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { TripPreferences, ItineraryPlan } from './types';
 import { generateItinerary } from './services/geminiService';
 import { TripForm } from './components/TripForm';
 import { ItineraryDisplay } from './components/ItineraryDisplay';
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { ApiKeyForm } from './components/ApiKeyForm';
 import { SparklesIcon } from './components/icons/SparklesIcon';
+import { KeyIcon } from './components/icons/KeyIcon';
 
 export const App: React.FC = () => {
-  const [aiClient, setAiClient] = useState<GoogleGenAI | null>(null);
-  const [initError, setInitError] = useState<string | null>(null);
+  // Use useMemo to initialize the client only once.
+  // As per guidelines, process.env.API_KEY is assumed to be available.
+  const aiClient = useMemo(() => {
+    try {
+      // The constructor will throw an error if the key is missing or invalid.
+      return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    } catch (e) {
+      console.error("Failed to initialize GoogleGenAI:", e);
+      return null;
+    }
+  }, []);
+
   const [preferences, setPreferences] = useState<TripPreferences | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryPlan | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // This will run only once. If API_KEY is in env, it will work.
-    // If not, it will fail, and the user will be prompted.
-    try {
-      // Intentionally check for a placeholder that won't exist.
-      // This forces the UI prompt in environments without a configured process.env
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      setAiClient(ai);
-    } catch (e) {
-      console.error("API Key from environment not found:", e);
-      setInitError("API Key not configured.");
-    }
-  }, []);
-  
-  const handleApiKeySubmit = (apiKey: string) => {
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        setAiClient(ai);
-        setInitError(null); // Clear the init error to show the main app
-    } catch (e) {
-        console.error("Failed to initialize with provided API key:", e);
-        setInitError("The provided API Key is invalid. Please check and try again.");
-    }
-  };
-
   const handleFormSubmit = useCallback(async (prefs: TripPreferences) => {
     if (!aiClient) {
-        setError("AI Service is not available.");
+        setError("AI Service is not configured correctly. Please check the API key.");
         return;
     }
     setIsLoading(true);
@@ -69,8 +54,21 @@ export const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (!aiClient && initError) {
-        return <ApiKeyForm onApiKeySubmit={handleApiKeySubmit} />;
+    if (!aiClient) {
+        return (
+             <div className="bg-white p-8 rounded-2xl shadow-lg animate-fade-in text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                    <KeyIcon className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-red-700">Service Not Configured</h2>
+                <p className="text-gray-600 mt-2">
+                    The Google Gemini API key is missing or invalid.
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                    Please ensure it is correctly set up in your environment variables.
+                </p>
+            </div>
+        );
     }
     if (isLoading) {
       return <LoadingSpinner preferences={preferences} />;
