@@ -98,7 +98,7 @@ const itinerarySchema = {
 export const generateItinerary = async (ai: GoogleGenAI, prefs: TripPreferences): Promise<ItineraryPlan> => {
   const duration = Math.ceil((new Date(prefs.endDate).getTime() - new Date(prefs.startDate).getTime()) / (1000 * 3600 * 24)) + 1;
 
-  const prompt = `Generate a personalized travel itinerary.
+   const prompt = `Generate a personalized travel itinerary.
 - Trip Details:
   - From: ${prefs.source}, India
   - To: ${prefs.destination}, India
@@ -110,19 +110,20 @@ export const generateItinerary = async (ai: GoogleGenAI, prefs: TripPreferences)
   - Total Budget: Approximately ${prefs.budget} INR for ${prefs.numPeople} people.
   - Traveler Interests: ${prefs.interests.join(', ')}.
 
-The itinerary must include the following sections:
-1.  **Flight Details**: Suggest a plausible round-trip flight from the source to the destination. Include a realistic airline, flight number, times, and estimated cost for ${prefs.numPeople} people.
+The itinerary must include the following sections and STRICTLY follow the schema:
+1.  **Flight Details**: Suggest a plausible round-trip flight from the source to the destination. Include a realistic airline, flight number, times, a flight date (ISO YYYY-MM-DD), and estimatedCost for the total group. **estimatedCost must be a positive integer greater than 0.**
 2.  **Weather Forecast**: Provide a weather forecast for ${prefs.destination} for the duration of the trip. Include an overall summary and a brief daily forecast (high/low temps in Celsius, conditions).
 3.  **Daily Plans**: A detailed day-by-day plan. For each day, provide:
     - Specific activities with times, descriptions, costs, and mappable locations.
-    - An accommodation suggestion (e.g., a specific hotel name) with a description, cost, and mappable location.
+    - An accommodation suggestion with name, description, cost, and mappable location.
     - Local transportation and food suggestions with estimated costs.
+   **Every estimatedCost field (activity, accommodation, transport, food) must be an integer > 0 and represent INR.**
 
 Constraints:
 - All costs must be in Indian Rupees (INR).
-- The total estimated cost must be a reasonable aggregation of all individual costs (flights, accommodation, activities, etc.).
-- The 'location' field for activities and accommodation MUST be a specific, real-world address or place name that can be found on a map.
-- The plan should be practical, creative, and adhere to the budget and interests provided.`;
+- The totalEstimatedCost must be a reasonable aggregation of all individual costs (flights, accommodation, activities, etc.) and should be > 0.
+- The 'location' field MUST be a specific, real-world address or place name discoverable on maps.
+- Respond in JSON only that conforms exactly to the provided schema with integer costs and non-empty fields.`
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
