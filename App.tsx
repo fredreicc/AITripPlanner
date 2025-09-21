@@ -11,11 +11,16 @@ import { KeyIcon } from './components/icons/KeyIcon';
 export const App: React.FC = () => {
   // Use useMemo to initialize the client only once.
   const aiClient = useMemo(() => {
+    // NOTE: Hardcoding API keys is not recommended for production applications.
+    // This key has been added directly for local development convenience as requested.
+    const apiKey = "AIzaSyCwZ_rOLfe6smc3RAUTWYsvpCRPzNGKxS0";
+    
     try {
-      // Initialize the Google Gemini AI client using the standard method.
-      // The development environment is expected to provide the API key.
-      // This allows the platform to use its proxy, avoiding CORS issues.
-      return new GoogleGenAI({ apiKey: process.env.API_KEY });
+      if (!apiKey) {
+        throw new Error("API key is missing.");
+      }
+      // The constructor will throw an error if the key is missing or invalid.
+      return new GoogleGenAI({ apiKey });
     } catch (e) {
       console.error("Failed to initialize GoogleGenAI:", e);
       return null;
