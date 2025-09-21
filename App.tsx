@@ -10,11 +10,17 @@ import { KeyIcon } from './components/icons/KeyIcon';
 
 export const App: React.FC = () => {
   // Use useMemo to initialize the client only once.
-  // As per guidelines, process.env.API_KEY is assumed to be available.
   const aiClient = useMemo(() => {
+    // NOTE: Hardcoding API keys is not recommended for production applications.
+    // This key has been added directly for local development convenience as requested.
+    const apiKey = "AIzaSyCwZ_rOLfe6smc3RAUTWYsvpCRPzNGKxS0";
+    
     try {
+      if (!apiKey) {
+        throw new Error("API key is missing.");
+      }
       // The constructor will throw an error if the key is missing or invalid.
-      return new GoogleGenAI({ apiKey: process.env.API_KEY });
+      return new GoogleGenAI({ apiKey });
     } catch (e) {
       console.error("Failed to initialize GoogleGenAI:", e);
       return null;
